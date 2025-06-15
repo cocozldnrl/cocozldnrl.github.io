@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>제로백 시뮬레이터</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background:#f0f0f0; margin:0; padding:0; }
+    h1 { background:#333; color:white; padding:20px 0; margin:0; }
+    #carGrid { display:flex; flex-wrap:wrap; justify-content:center; gap:15px; margin:20px; }
+    .car-card { background:#fff; padding:15px; border-radius:8px; width:200px; cursor:pointer; position:relative; border:2px solid transparent; box-shadow:0 2px 5px rgba(0,0,0,0.1); transition:0.2s; }
+    .car-card:hover { transform: scale(1.03); }
+    .car-card.selected { border-color:#007bff; }
+    .brand-logo { width:40px; position:absolute; top:10px; right:10px; }
+    .car-info h3 { margin:10px 0 5px; }
+    .specs span, .zero-time span { display:block; margin:2px 0; font-size:0.9em; }
+    #simulationArea { margin-top:30px; }
+    #progressBar { background:#ddd; width:80%; height:20px; margin:20px auto; position:relative; border-radius:10px; overflow:hidden; }
+    #progressFill { height:100%; width:0%; background:#28a745; transition:width 0.2s; }
+    #progressCar { position:absolute; top:-25px; left:0%; font-size:24px; transition:left 0.1s; }
+    footer { margin-top:50px; padding:10px; color:#777; font-size:0.9em; }
+  </style>
+</head>
+<body>
+  <h1>제로백 시뮬레이터</h1>
+  <div id="carGrid"></div>
+
+  <div id="simulationArea" style="display:none;">
+    <button id="startBtn" disabled>시작</button>
+    <button id="resetBtn" disabled>초기화</button>
+    <div id="progressBar"><div id="progressFill"></div><div id="progressCar">🚗</div></div>
+    <div>속도: <span id="currentSpeed">0</span> km/h</div>
+    <div>시간: <span id="timerDisplay">0.00초</span></div>
+  </div>
+
+  <div id="resultArea" style="display:none;">
+    <h3>결과</h3>
+    <p id="resultCarName"></p>
+    <p>걸린 시간: <span id="resultTime"></span></p>
+  </div>
+
+  <footer>
+    <p>Made by 너</p>
+  </footer>
+
+  <script>
+    const carData = {
+      stinger: { name: "기아 스팅어 3.3T", brand: "기아", weight: 1825, power: 370, zeroToHundred: 5.1, type: "sedan" },
+      g70: { name: "제네시스 G70 3.3T", brand: "제네시스", weight: 1715, power: 370, zeroToHundred: 4.7, type: "sedan" },
+      m3_comp: { name: "BMW M3 Competition", brand: "BMW", weight: 1730, power: 510, zeroToHundred: 3.9, type: "sedan" },
+      rs6: { name: "아우디 RS6 아반트", brand: "아우디", weight: 2040, power: 600, zeroToHundred: 3.6, type: "wagon" },
+      mustang: { name: "포드 머스탱 GT", brand: "포드", weight: 1760, power: 450, zeroToHundred: 4.3, type: "coupe" }
+    };
+
+    const brandLogos = {
+      "기아": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Kia_logo.svg/1024px-Kia_logo.svg.png",
+      "제네시스": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Genesis_logo.svg/1024px-Genesis_logo.svg.png",
+      "BMW": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/BMW.svg/1024px-BMW.svg.png",
+      "아우디": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Audi_logo.svg/1024px-Audi_logo.svg.png",
+      "포드": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/1024px-Ford_logo_flat.svg.png"
+    };
+
+    const carGrid = document.getElementById('carGrid');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const simulationArea = document.getElementById('simulationArea');
+    const resultArea = document.getElementById('resultArea');
+    const progressFill = document.getElementById('progressFill');
+    const progressCar = document.getElementById('progressCar');
+    const currentSpeedDisplay = document.getElementById('currentSpeed');
+    const timerDisplay = document.getElementById('timerDisplay');
+    let selectedCar = null;
+    let simulationRunning = false;
+    let animationFrame = null;
+
+    function createCarCard(key, car) {
+      const card = document.createElement('div');
+      card.className = 'car-card';
+      card.innerHTML = `
+        <img class="brand-logo" src="${brandLogos[car.brand]}" alt="${car.brand}">
+        <div class="car-info">
+          <h3>${car.name}</h3>
+          <div class="specs">
+            <span>무게: ${car.weight}kg</span>
+            <span>출력: ${car.power}마력</span>
+            <span>제로백: ${car.zeroToHundred}초</span>
+          </div>
+        </div>
+      `;
+      card.onclick = () => {
+        document.querySelectorAll('.car-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedCar = key;
+        startBtn.disabled = false;
+        resetBtn.disabled = false;
+      };
+      return card;
+    }
+
+    function renderCars() {
+      for (const key in carData) {
+        const card = createCarCard(key, carData[key]);
+        carGrid.appendChild(card);
+      }
+    }
+
+    function startSimulation() {
+      if (!selectedCar || simulationRunning) return;
+      simulationRunning = true;
+      startBtn.disabled = true;
+      simulationArea.style.display = 'block';
+      resultArea.style.display = 'none';
+      const car = carData[selectedCar];
+      const timeMs = car.zeroToHundred * 1000;
+      const startTime = Date.now();
+
+      function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / timeMs, 1);
+        const eased = 1 - Math.pow(1 - progress, 2);
+        const speed = Math.round(eased * 100);
+        currentSpeedDisplay.textContent = speed;
+        timerDisplay.textContent = (elapsed / 1000).toFixed(2) + "초";
+        progressFill.style.width = progress * 100 + "%";
+        progressCar.style.left = progress * 100 + "%";
+
+        if (progress < 1) {
+          animationFrame = requestAnimationFrame(animate);
+        } else {
+          finishSimulation();
+        }
+      }
+
+      animate();
+    }
+
+    function finishSimulation() {
+      simulationRunning = false;
+      resultArea.style.display = 'block';
+      document.getElementById('resultTime').textContent = carData[selectedCar].zeroToHundred + "초";
+      document.getElementById('resultCarName').textContent = carData[selectedCar].name;
+    }
+
+    function resetSimulation() {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      simulationRunning = false;
+      progressFill.style.width = '0%';
+      progressCar.style.left = '0%';
+      currentSpeedDisplay.textContent = '0';
+      timerDisplay.textContent = '0.00초';
+      resultArea.style.display = 'none';
+      startBtn.disabled = !selectedCar;
+    }
+
+    startBtn.onclick = startSimulation;
+    resetBtn.onclick = resetSimulation;
+
+    renderCars();
+  </script>
+</body>
+</html>
