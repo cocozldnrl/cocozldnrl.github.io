@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>채채키우기 데모</title>
+  <style>
+    body{font-family:Arial, sans-serif;background:#f2f2f2;margin:0;padding:0;text-align:center}
+    .container{max-width:400px;margin:0 auto;padding:20px}
+    #character{width:150px;margin:20px auto;transition:transform .3s}
+    .status{display:flex;justify-content:space-around;margin-bottom:20px}
+    .bar{background:#ddd;border-radius:10px;overflow:hidden;width:80px;height:10px}
+    .fill{height:100%;background:#ff69b4;transition:width .3s}
+    .actions button{padding:10px;margin:5px;border:0;border-radius:10px;background:#ff69b4;color:#fff;font-weight:bold}
+    #speech{margin-top:10px;font-style:italic}
+    footer{margin-top:40px;font-size:12px;color:gray}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐰 채채 키우기 (데모)</h1>
+    <!-- 임시 캐릭터 이미지: 필요하면 다른 PNG/GIF로 교체 -->
+    <img id="character"
+         src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Rabbit_in_cage.jpg/320px-Rabbit_in_cage.jpg"
+         alt="채채">
+    <!-- 상태 막대 -->
+    <div class="status">
+      <div>배고픔<div class="bar"><div id="hunger" class="fill" style="width:50%"></div></div></div>
+      <div>에너지<div class="bar"><div id="energy" class="fill" style="width:50%"></div></div></div>
+      <div>즐거움<div class="bar"><div id="fun" class="fill" style="width:50%"></div></div></div>
+    </div>
+    <!-- 액션 버튼 -->
+    <div class="actions">
+      <button onclick="feed()">밥주기</button>
+      <button onclick="sleep()">재우기</button>
+      <button onclick="play()">놀아주기</button>
+      <button onclick="praise()">칭찬하기</button>
+      <button onclick="walk()">산책하기</button>
+    </div>
+    <div id="speech">"안뇽! 채채야~"</div>
+    <footer>© 채채키우기 Demo</footer>
+  </div>
+
+<script>
+let hunger=50,energy=50,fun=50;
+const speech=document.getElementById('speech');
+function update(){document.getElementById('hunger').style.width=hunger+'%';
+                  document.getElementById('energy').style.width=energy+'%';
+                  document.getElementById('fun').style.width=fun+'%';}
+function say(txt){speech.innerText=`"${txt}"`;
+  const c=document.getElementById('character');
+  c.style.transform='scale(1.05)'; setTimeout(()=>c.style.transform='scale(1)',300);}
+function feed(){hunger=Math.min(100,hunger+20); say('우앙 밥이다~'); update();}
+function sleep(){energy=Math.min(100,energy+30); say('잠 좀 잘게~ Zzz'); update();}
+function play(){fun=Math.min(100,fun+20); hunger=Math.max(0,hunger-10); say('완전 재밌엉!!'); update();}
+function praise(){fun=Math.min(100,fun+10); say('에헤헤~ 칭찬 좋다 냥냥~'); update();}
+function walk(){fun=Math.min(100,fun+15); hunger=Math.max(0,hunger-5); energy=Math.max(0,energy-10);
+                say('공원이닷! 다람쥐 잡자~'); update();}
+update();
+</script>
+</body>
+</html>
